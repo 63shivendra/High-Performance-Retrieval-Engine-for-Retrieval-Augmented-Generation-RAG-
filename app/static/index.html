@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SelfIndex — a search engine built from scratch</title>
+  <meta name="description" content="Live demo: inverted indexes, Boolean / TF / TF-IDF retrieval and TAAT vs DAAT query processing, implemented from scratch in Python and benchmarked against Elasticsearch.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='13' cy='13' r='8' fill='none' stroke='%234f6bed' stroke-width='3.5'/><path d='M19 19l8 8' stroke='%234f6bed' stroke-width='3.5' stroke-linecap='round'/></svg>">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap top-inner">
+      <a class="brand" href="/">SelfIndex</a>
+      <nav>
+        <a href="#search">Demo</a>
+        <a href="#benchmarks">Benchmarks</a>
+        <a href="#how">How it works</a>
+        <a href="/docs">API</a>
+        <a class="gh" href="https://github.com/63shivendra/High-Performance-Retrieval-Engine-for-Retrieval-Augmented-Generation-RAG-" target="_blank" rel="noopener">GitHub ↗</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero wrap">
+      <h1>A search engine, built from scratch.</h1>
+      <p class="lede">
+        Inverted indexes with positional postings, a Boolean query parser, TF and TF-IDF ranking,
+        and two query-processing strategies (term-at-a-time and document-at-a-time). Written in pure Python with
+        no search library, and benchmarked against Elasticsearch on 100K documents.
+      </p>
+      <dl class="stats" id="stats">
+        <div><dt>Documents indexed</dt><dd data-k="documents">…</dd></div>
+        <div><dt>Unique terms</dt><dd data-k="vocabulary">…</dd></div>
+        <div><dt>Postings</dt><dd data-k="postings">…</dd></div>
+        <div><dt>Tokens</dt><dd data-k="tokens">…</dd></div>
+      </dl>
+    </section>
+
+    <section id="search" class="wrap card search-card">
+      <form id="form" autocomplete="off">
+        <div class="searchbar">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>
+          <input id="q" type="search" placeholder="Search ~4,000 Wikipedia articles…" aria-label="Query" maxlength="300">
+          <button type="submit">Search</button>
+        </div>
+
+        <div class="controls">
+          <div class="control">
+            <span class="label">Retrieval model</span>
+            <div class="seg" role="radiogroup" data-name="model">
+              <button type="button" role="radio" data-v="boolean">Boolean</button>
+              <button type="button" role="radio" data-v="tf">TF</button>
+              <button type="button" role="radio" data-v="tfidf" aria-checked="true">TF-IDF</button>
+            </div>
+          </div>
+          <div class="control">
+            <span class="label">Query processing</span>
+            <div class="seg" role="radiogroup" data-name="mode">
+              <button type="button" role="radio" data-v="taat" aria-checked="true" title="Term-at-a-time: accumulate scores one postings list at a time">TAAT</button>
+              <button type="button" role="radio" data-v="daat" title="Document-at-a-time: walk all postings lists in parallel, scoring one document at a time">DAAT</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="examples">
+          <span class="label">Try</span>
+          <button type="button" class="chip" data-q="quantum physics" data-m="tfidf">quantum physics</button>
+          <button type="button" class="chip" data-q="roman empire history" data-m="tfidf">roman empire history</button>
+          <button type="button" class="chip" data-q='PHRASE "united states" AND war' data-m="boolean">PHRASE "united states" AND war</button>
+          <button type="button" class="chip" data-q='(apple OR orange) AND NOT computer' data-m="boolean">(apple OR orange) AND NOT computer</button>
+          <button type="button" class="chip" data-q="solar energy" data-m="tf">solar energy</button>
+        </div>
+        <p class="hint" id="hint"></p>
+      </form>
+
+      <div id="meta" class="meta" hidden></div>
+      <ol id="results" class="results"></ol>
+
+      <div class="compare-box">
+        <button type="button" id="compareBtn" class="ghost">Compare all 6 configurations for this query →</button>
+        <div id="compare" hidden></div>
+      </div>
+    </section>
+
+    <section id="benchmarks" class="wrap">
+      <h2>Benchmarks at full scale</h2>
+      <p class="sub">100,000 documents (50K Wikipedia + 50K Webz.io news, ~15M tokens), 256 queries, top-10.
+        These are the original evaluation results from <code>results/*.json</code>.</p>
+
+      <div class="kpis">
+        <div class="kpi"><span class="kpi-v">9.47 ms</span><span class="kpi-l">SelfIndex P95 latency (TF-IDF, TAAT)</span><span class="kpi-c">vs 10.22 ms Elasticsearch (warm)</span></div>
+        <div class="kpi"><span class="kpi-v">275 QPS</span><span class="kpi-l">SelfIndex throughput</span><span class="kpi-c">vs 220 QPS Elasticsearch (warm)</span></div>
+        <div class="kpi"><span class="kpi-v">74.8%</span><span class="kpi-l">Index size cut by Elias γ/δ coding</span><span class="kpi-c">Zlib: 59.6% at a much lower latency cost</span></div>
+        <div class="kpi"><span class="kpi-v">48.6%</span><span class="kpi-l">Vocabulary reduced by preprocessing</span><span class="kpi-c">stopword removal + Porter stemming</span></div>
+      </div>
+
+      <div class="card table-card">
+        <table id="benchTable">
+          <thead><tr><th>Configuration</th><th>Index</th><th>Store</th><th>Compression</th><th>Mode</th><th class="n">P50 ms</th><th class="n">P95 ms</th><th class="n">P99 ms</th><th class="n">QPS</th><th class="n">Disk MB</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="gallery">
+        <figure><img loading="lazy" src="/plots/plot_ES_comparison.png" alt="SelfIndex vs Elasticsearch latency and throughput"><figcaption>SelfIndex vs Elasticsearch (cold / warm / mixed cache)</figcaption></figure>
+        <figure><img loading="lazy" src="/plots/plot_AC_query_modes.png" alt="TAAT vs DAAT"><figcaption>TAAT vs DAAT query processing</figcaption></figure>
+        <figure><img loading="lazy" src="/plots/plot_AB_compression.png" alt="Compression trade-offs"><figcaption>Compression: size vs latency</figcaption></figure>
+        <figure><img loading="lazy" src="/plots/plot_C_index_types.png" alt="Index types"><figcaption>Boolean vs TF vs TF-IDF</figcaption></figure>
+        <figure><img loading="lazy" src="/plots/combined_zipf_after_preprocessing.png" alt="Zipf's law"><figcaption>Zipf's law holds after preprocessing</figcaption></figure>
+        <figure><img loading="lazy" src="/plots/plot_A_datastores.png" alt="Datastores"><figcaption>JSON vs SQLite datastore</figcaption></figure>
+      </div>
+    </section>
+
+    <section id="how" class="wrap">
+      <h2>How it works</h2>
+      <ol class="pipeline">
+        <li><b>Preprocess</b><span>lowercase · strip URLs/HTML · tokenize · drop stopwords · Porter stem</span></li>
+        <li><b>Index</b><span>term → [(doc, tf, positions)] postings; IDF = log(N / df)</span></li>
+        <li><b>Store / compress</b><span>JSON or SQLite · Elias γ/δ, VByte or Zlib with gap encoding · skip pointers</span></li>
+        <li><b>Parse</b><span>AND / OR / NOT / PHRASE / ( ) via shunting-yard → RPN</span></li>
+        <li><b>Process</b><span>TAAT score accumulators or DAAT multi-pointer merge</span></li>
+        <li><b>Rank</b><span>Σ tf (TF) or Σ tf · idf (TF-IDF), top-k</span></li>
+      </ol>
+
+      <div class="cols">
+        <div class="card">
+          <h3>Findings</h3>
+          <ul>
+            <li><b>TAAT beat DAAT by ~70% in Python</b>: sequential postings scans have better cache locality and lower interpreter overhead. DAAT tends to win in compiled engines.</li>
+            <li><b>Boolean retrieval paradox</b>: highest throughput (344 QPS) but the worst tail latency, because large unranked result sets are expensive to materialise.</li>
+            <li><b>Compression is a dial</b>: Zlib is the balanced choice; Elias coding saves the most space but adds ~12× latency from bit-level decoding in Python.</li>
+            <li><b>Skip pointers</b> (√n spacing) give ~3% on in-memory AND queries, with larger gains expected for disk-resident postings.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>About this demo</h3>
+          <p>The live index is built at server start from a ~4,000-article English Wikipedia sample, using the same
+            <code>src/</code> indexers as the benchmark. Latencies shown are measured around the engine's query call only.</p>
+          <p id="buildInfo" class="muted"></p>
+          <p>REST endpoints: <code>/api/search</code>, <code>/api/compare</code>, <code>/api/stats</code>, <code>/api/benchmarks</code>. See <a href="/docs">interactive API docs</a>.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="wrap foot">
+    Built by <b>Shivendra Pratap Singh</b> ·
+    <a href="https://github.com/63shivendra/High-Performance-Retrieval-Engine-for-Retrieval-Augmented-Generation-RAG-" target="_blank" rel="noopener">Source on GitHub</a> ·
+    <a href="https://github.com/63shivendra/High-Performance-Retrieval-Engine-for-Retrieval-Augmented-Generation-RAG-/blob/main/report_detailed.pdf" target="_blank" rel="noopener">Full report (PDF)</a>
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

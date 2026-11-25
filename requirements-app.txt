@@ -1,0 +1,4 @@
+# Minimal dependencies for the live web demo (app/)
+nltk>=3.8
+fastapi>=0.110
+uvicorn[standard]>=0.29

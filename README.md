@@ -1,227 +1,170 @@
-# 🌐 **Information Retrieval: Indexing and Retrieval System**
+# SelfIndex: a high-performance retrieval engine, built from scratch
 
-***Assignment Project Report — Shivendra Pratap Singh (Roll No: 2024202022)***
-📅 *November 3, 2025*
+[![CI](https://github.com/63shivendra/High-Performance-Retrieval-Engine-for-Retrieval-Augmented-Generation-RAG-/actions/workflows/ci.yml/badge.svg)](https://github.com/63shivendra/High-Performance-Retrieval-Engine-for-Retrieval-Augmented-Generation-RAG-/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-live%20demo-009688?logo=fastapi&logoColor=white)
+![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)
 
----
+The retrieval layer of a RAG system ("R"), implemented without a search library. It includes inverted indexes with
+positional postings, a Boolean query parser, TF and TF-IDF ranking, term-at-a-time and document-at-a-time query
+processing, and postings compression. It was benchmarked against **Elasticsearch** on 100,000 documents.
 
-## 🎯 **Executive Summary**
+### 🔎 [**Try the live demo →**](https://selfindex-search.onrender.com)
 
-This project presents **SelfIndex**, a custom-built search indexing and retrieval system developed from scratch and benchmarked against **Elasticsearch**.
-It explores **Boolean**, **TF**, and **TF-IDF** indexing models, multiple **datastores (JSON, SQLite)**, **compression techniques (Elias-Fano, Zlib)**, and **query modes (TAAT, DAAT)**.
-Key findings reveal that the system achieves **competitive performance** with Elasticsearch, demonstrating efficiency and deep insight into search engine internals.
+> Hosted on a free tier, so the first request after a period of inactivity can take ~30–60 s while the container wakes up.
 
----
-
-## 🧭 **Objectives**
-
-* 🔹 Build a **custom search indexing system** with modular configurations
-* 🔹 Compare **indexing strategies, datastores, compression methods**
-* 🔹 Evaluate **query modes** — Term-at-a-Time (TAAT) vs Document-at-a-Time (DAAT)
-* 🔹 Benchmark against **Elasticsearch** under multiple cache conditions
-* 🔹 Measure artifacts: **latency (P95/P99)**, **throughput (QPS)**, **memory footprint**
+[![SelfIndex live demo](docs/screenshot.png)](https://selfindex-search.onrender.com)
 
 ---
 
-## 📂 **Dataset Overview**
+## Highlights
 
-| Source           | Description                                      | Count |
-| ---------------- | ------------------------------------------------ | ----- |
-| 🧠 Wikipedia     | 50,000 articles from HuggingFace (`20231101.en`) | 50K   |
-| 🗞️ Webz.io News | 50,000 real-world articles                       | 50K   |
-| 📊 Total         | 100,000 documents (~15M tokens)                  | 100K  |
+| | |
+|---|---|
+| ⚡ **Faster than Elasticsearch (warm cache)** | **9.47 ms** P95 latency and **275 QPS**, vs 10.22 ms and 220 QPS for Elasticsearch on the same 100K-doc corpus and 256 queries |
+| 🧱 **Built from first principles** | Positional inverted index, shunting-yard Boolean parser (AND / OR / NOT / PHRASE / parentheses), TF and TF-IDF scoring |
+| 🔀 **Two query-processing strategies** | TAAT (score accumulators) vs DAAT (multi-pointer merge), measured head-to-head |
+| 🗜️ **Compression** | Elias γ/δ with gap encoding (−74.8% index size), VByte, Zlib (−59.6%), plus √n skip pointers |
+| 💾 **Pluggable storage** | In-memory JSON store or disk-backed SQLite |
+| 🧪 **Tested and deployable** | 58 pytest tests, GitHub Actions CI with a Docker smoke test, one-click Render deploy |
 
-**Rationale:** A mixed corpus ensures language diversity — formal text from Wikipedia + dynamic topics from news data.
+## What's in the live demo
 
----
+* Search ~4,000 English Wikipedia articles with **Boolean**, **TF** or **TF-IDF** retrieval, using **TAAT** or **DAAT** processing.
+* See the exact query the parser executed, the stemmed terms, the scores, highlighted snippets and engine latency.
+* **Compare all 6 configurations** on any query (median of 7 runs each).
+* Browse the full-scale benchmark table and plots.
+* REST API with interactive docs at [`/docs`](https://selfindex-search.onrender.com/docs).
 
-## ⚙️ **Data Preprocessing**
-
-Implemented with **NLTK** for linguistic normalization.
-
-**Pipeline Steps**
-
-1. ✂️ Tokenization
-2. 🔡 Lowercasing
-3. 🚫 Stopword Removal
-4. 🌱 Stemming (Porter Algorithm)
-5. 🧹 Special Character Cleanup
-
-✅ **Zipf’s Law Validation** confirmed natural term frequency distribution, ensuring corpus representativeness.
-✅ **Vocabulary reduced by 48.6%**, improving lookup speed and index compactness.
-
----
-
-## 🧩 **Implementation Details**
-
-### 🗂️ Index Naming Convention
-
-```
-SelfIndex_i{x}d{y}c{z}o{optim}
+```bash
+curl "https://selfindex-search.onrender.com/api/search?q=quantum+physics&model=tfidf&mode=taat&k=5"
 ```
 
-| Parameter | Options | Meaning                  |
-| --------- | ------- | ------------------------ |
-| i{x}      | 1, 2, 3 | Boolean / TF / TF-IDF    |
-| d{y}      | 1, 2    | JSON / SQLite            |
-| c{z}      | 1, 2, 3 | None / Elias-Fano / Zlib |
-| o{optim}  | 0, sp   | None / Skip Pointers     |
+## Architecture
+
+```mermaid
+flowchart LR
+    A[Raw docs<br/>Wikipedia + News] --> B[Preprocess<br/>lowercase · strip HTML/URLs<br/>tokenize · stopwords · Porter stem]
+    B --> C[Inverted index<br/>term → doc, tf, positions]
+    C --> D{Datastore}
+    D --> D1[JSON in-memory]
+    D --> D2[SQLite on disk]
+    C --> E{Compression}
+    E --> E1[Elias γ/δ]
+    E --> E2[VByte]
+    E --> E3[Zlib]
+    Q[Query] --> P[Parser<br/>shunting-yard → RPN]
+    P --> T{Processing}
+    T --> T1[TAAT]
+    T --> T2[DAAT]
+    C --> T
+    T1 --> R[Rank: Σ tf · idf → top-k]
+    T2 --> R
+```
+
+Index variants follow the naming scheme `SelfIndex_i{x}d{y}c{z}o{optim}`:
+
+| Parameter | Options |
+|---|---|
+| `i` index type | `1` Boolean · `2` TF · `3` TF-IDF |
+| `d` datastore | `1` JSON · `2` SQLite |
+| `c` compression | `1` none · `2` Elias γ/δ · `3` Zlib |
+| `o` optimization | `0` none · `sp` skip pointers |
+
+## Results (100K documents, 256 queries, top-10)
+
+| System | Configuration | P95 (ms) | P99 (ms) | QPS | Index size |
+|---|---|---:|---:|---:|---:|
+| **SelfIndex** | TF-IDF · JSON · TAAT | **9.47** | 11.93 | **275** | 651 MB |
+| SelfIndex | TF-IDF · JSON · DAAT | 16.12 | 19.94 | 157 | 651 MB |
+| SelfIndex | TF-IDF · SQLite · TAAT | 10.94 | 14.01 | 242 | n/a |
+| SelfIndex | TF-IDF · Zlib · TAAT | 25.71 | 127.94 | 103 | 263 MB |
+| SelfIndex | TF-IDF · Elias γ/δ · TAAT | 119.38 | 228.25 | 27 | 164 MB |
+| SelfIndex | Boolean + skip pointers | 10.80 | 12.11 | 357 | 1,322 MB |
+| Elasticsearch | warm cache | 10.22 | 11.91 | 220 | 418 MB |
+| Elasticsearch | cold cache | 12.60 | 13.74 | 98 | 418 MB |
+
+Raw numbers are in [`results/`](results/), and plots are in [`plots/`](plots/).
+
+<p align="center">
+  <img src="plots/plot_ES_comparison.png" width="49%" alt="SelfIndex vs Elasticsearch">
+  <img src="plots/plot_AB_compression.png" width="49%" alt="Compression trade-offs">
+</p>
+
+### Key findings
+
+* **TAAT beats DAAT by ~70% in Python.** Sequential postings scans have better cache locality and less interpreter overhead than juggling many pointers. DAAT usually wins in compiled engines, where its early-termination advantages dominate.
+* **The Boolean paradox.** Boolean retrieval had the highest throughput (344 QPS) but the worst tail latency, because materializing large unranked result sets is expensive. That suits batch filtering better than user-facing search.
+* **Compression is a dial.** Zlib is the balanced option. Elias coding saves the most space but costs ~12× latency from bit-level decoding in pure Python.
+* **JSON vs SQLite.** The in-memory JSON store was ~15% faster. SQLite is the choice once the index no longer fits in RAM.
+* **Preprocessing** (stopwords and Porter stemming) cut the vocabulary by **48.6%**, and the term distribution follows Zipf's law.
+
+The full write-up is in [`report_detailed.pdf`](report_detailed.pdf).
+
+## Run it locally
+
+**Live demo (about 1 minute):**
+
+```bash
+pip install -r requirements-app.txt
+python -m nltk.downloader stopwords punkt punkt_tab
+uvicorn app.main:app --reload        # → http://localhost:8000
+```
+
+Or with Docker:
+
+```bash
+docker build -t selfindex . && docker run -p 7860:7860 selfindex   # → http://localhost:7860
+```
+
+**Tests:**
+
+```bash
+pip install pytest httpx && pytest -q
+```
+
+**Full research pipeline (100K docs):**
+
+```bash
+pip install -r requirements.txt
+# Put the Wikipedia parquet files in data/wiki/ and the Webz.io news zips in data/News_Datasets/
+python build.py -x 3 -y 1 -z 1 -optim 0                  # build an index variant
+python query.py -x 3 -y 1 -z 1 -q T -optim 0 --interactive
+python evaluate.py -x 3 -y 1 -z 1 -q T -optim 0          # latency / throughput / memory
+python build_es.py && python evaluate_es_all_scenarios.py   # Elasticsearch baseline
+```
+
+Pre-built indices: [Google Drive](https://drive.google.com/drive/folders/15bKzPq0s4G_gNo3Ecq_n-83LIv3UJ8tK?usp=sharing)
+
+## Deploy your own
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/63shivendra/High-Performance-Retrieval-Engine-for-Retrieval-Augmented-Generation-RAG-)
+
+The included [`Dockerfile`](Dockerfile) also runs as-is on **Hugging Face Spaces** (Docker SDK, port 7860), Railway and Fly.io.
+
+## Project structure
+
+```
+src/                     core engine
+  self_indexer.py          Boolean index + query parser (x=1)
+  self_indexer_x2.py       TF ranking (x=2)
+  self_indexer_x3.py       TF-IDF ranking (x=3)
+  sqlite_indexer.py        SQLite datastore (y=2)
+  compression/             Elias γ/δ, VByte, Zlib codecs
+  skip_pointer_builder.py  √n skip pointers
+  daat_query.py            document-at-a-time processing
+  es_indexer.py            Elasticsearch baseline
+app/                     FastAPI live demo + static front end
+tests/                   pytest suite (engine + API)
+build.py · query.py · evaluate.py   CLI for building, querying, benchmarking
+results/ · plots/        benchmark outputs
+docs/                    design notes (optimizations, ES evaluation methodology)
+```
+
+## Tech stack
+
+Python · NLTK · FastAPI · SQLite · Elasticsearch (baseline) · pandas / matplotlib · Docker · GitHub Actions
 
 ---
 
-## 📚 **Index Types**
-
-### 🟩 **Boolean Index (x=1)**
-
-* Logical retrieval (`AND`, `OR`, `NOT`, `PHRASE`)
-* ⚡ Fast average latency, but poor tail latency (Boolean Paradox)
-
-### 🟨 **TF Index (x=2)**
-
-* Stores **term frequency per document**
-* Enables ranking → better consistency and early termination
-
-### 🟥 **TF-IDF Index (x=3)**
-
-* Adds **inverse document frequency weighting**
-* 📈 Produces most relevant, ranked results
-
----
-
-## 💾 **Datastores**
-
-### 🧱 **Custom JSON Store (y=1)**
-
-* In-memory, fast access
-* +15.5% faster than SQLite
-* Ideal for read-heavy workloads
-
-### 🗃️ **SQLite Store (y=2)**
-
-* Disk-based, ACID-compliant
-* Efficient for large indices or write-heavy scenarios
-
----
-
-## 🧨 **Compression Techniques**
-
-| Method        | Space Saved       | Latency Impact    |
-| ------------- | ----------------- | ----------------- |
-| ❌ None        | Baseline (651 MB) | ⚡ Fastest         |
-| 🧩 Zlib       | 59.6% smaller     | ⏱️ +172% latency  |
-| 📦 Elias-Fano | 74.8% smaller     | 🐢 +1160% latency |
-
-**Recommendation:**
-
-* Real-time: None
-* Balanced workloads: Zlib
-* Archival: Elias-Fano
-
----
-
-## 🚀 **Optimization: Skip Pointers (i=sp)**
-
-* Adds skip pointers every √n postings
-* 🧠 Faster Boolean intersections (3% latency improvement)
-* Negligible storage overhead (+0.8%)
-* Significant gains at larger scales (disk-based systems)
-
----
-
-## 🔄 **Query Processing Modes**
-
-| Mode        | Description                                | P95 Latency | QPS |
-| ----------- | ------------------------------------------ | ----------- | --- |
-| ⚙️ **TAAT** | Term-at-a-Time — sequential term scoring   | 9.47ms      | 275 |
-| 🧮 **DAAT** | Document-at-a-Time — multi-pointer scoring | 16.12ms     | 157 |
-
-🟢 **TAAT is 70% faster in Python** due to better cache locality and lower overhead.
-
----
-
-## ⚖️ **Elasticsearch vs SelfIndex**
-
-| System                  | Cache Mode | P95 (ms) | QPS     |
-| ----------------------- | ---------- | -------- | ------- |
-| 🟢 SelfIndex (TAAT)     | In-memory  | **9.47** | **275** |
-| 🔵 Elasticsearch (WARM) | Full cache | 10.22    | 220     |
-| 🟡 Elasticsearch (COLD) | Disk fetch | 12.60    | 98      |
-
-✅ **SelfIndex outperforms ES by 7% latency and 25% throughput under warm conditions!**
-
----
-
-## 🧠 **Key Insights**
-
-### 🔍 **Boolean Retrieval Paradox**
-
-* Highest throughput (344 QPS)
-* Worst tail latency (P95 = 11.13ms)
-  ➡️ Great for batch processing, not for user-facing search.
-
-### 💾 **Compression Trade-offs**
-
-* Zlib = best balance between space and speed
-* Elias-Fano = heavy CPU overhead
-
-### 🧩 **Datastore Decision**
-
-* JSON faster for in-memory evaluation
-* SQLite ideal for scalability beyond RAM
-
-### ⚙️ **TAAT vs DAAT**
-
-* TAAT wins in Python
-* DAAT preferred in compiled systems (C++/Java)
-
-### 🪜 **Skip Pointers**
-
-* +3% speedup now
-* Potential +100% in disk-based or multi-term systems
-
----
-
-## 🧱 **Design Decisions**
-
-✅ Implemented:
-
-* 3 Index Types (Boolean, TF, TF-IDF)
-* 2 Datastores (JSON, SQLite)
-* 2 Compression Methods (Zlib, Elias-Fano)
-* 2 Query Modes (TAAT, DAAT)
-* Skip Pointers Optimization
-* Elasticsearch Benchmark (COLD/WARM/MIXED)
-
-🚫 Not Implemented (by design):
-
-* Distributed Indexing
-* Query Expansion or Synonyms
-* BM25 or PageRank Ranking Models
-
----
-
-## 🏁 **Conclusion**
-
-This project demonstrates a **full-fledged, modular information retrieval system** that rivals Elasticsearch in controlled environments.
-
-✨ **Highlights:**
-
-* TAAT mode outperformed Elasticsearch (WARM) by 7%
-* Compression & datastore studies reveal critical trade-offs
-* 256 diverse queries ensured robustness
-* The system achieved **real-world scale and interpretability**
-
-> **“From indexing to insights — SelfIndex bridges theory and real-world search performance.”**
-
----
-
-📘 **Repository & Resources**
-
-* 💻 **GitHub:** [63shivendra/ire_esindexVSselfindex](https://github.com/63shivendra/ire_esindexVSselfindex)
-* 📦 **Pre-built Indices:** [Google Drive Link](https://drive.google.com/drive/folders/15bKzPq0s4G_gNo3Ecq_n-83LIv3UJ8tK?usp=sharing)
-* 📄 **Complete Codebase:** [Google Drive Link](https://drive.google.com/drive/folders/1grfj_vlyhXRH7P9xn_qL0kYZC4fUp8HW?usp=sharing)
-
----
-
-🧑‍💻 **Author:** *Shivendra Pratap Singh*
-🎓 *Information Retrieval Assignment — 2025*
+**Shivendra Pratap Singh**. Originally built for a graduate Information Retrieval course (2025).

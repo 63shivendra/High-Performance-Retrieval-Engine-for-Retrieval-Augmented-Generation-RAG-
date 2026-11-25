@@ -1,0 +1,12 @@
+# Full research pipeline: preprocessing, index building, evaluation, plots
+-r requirements-app.txt
+numpy
+pandas
+pyarrow
+psutil
+requests
+matplotlib
+elasticsearch>=8,<9   # only for build_es.py / evaluate_es_all_scenarios.py
+# dev
+pytest
+httpx

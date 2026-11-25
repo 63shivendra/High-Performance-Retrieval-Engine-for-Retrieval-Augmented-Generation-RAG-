@@ -1,0 +1,8 @@
+# One-click deploy: https://render.com/deploy?repo=https://github.com/63shivendra/High-Performance-Retrieval-Engine-for-Retrieval-Augmented-Generation-RAG-
+services:
+  - type: web
+    name: selfindex-search
+    runtime: docker
+    plan: free
+    healthCheckPath: /healthz
+    autoDeploy: true

@@ -23,7 +23,7 @@ from src.self_indexer_x3 import SelfIndexer_x3
 
 def load_indexer(x, y, z, q, optim):
     """Load the built index"""
-    identifier = f"SelfIndex_i{x}d{y}c{z}q{q}o{optim}"
+    identifier = f"SelfIndex_i{x}d{y}c{z}o{optim}"  # same naming as build.py (query mode is runtime-only)
     
     # Select indexer class
     if x == 1:
@@ -49,24 +49,11 @@ def run_query(indexer, query, x, q_mode, top_k=10):
     start_time = time.time()
     
     # Choose query method based on q_mode
-    if q_mode == 'D':
-        # DAAT mode
-        if hasattr(indexer, 'query_daat'):
-            if x == 1:
-                results = indexer.query_daat(query)
-            else:
-                results = indexer.query_daat(query, top_k=top_k, return_scores=True)
-        else:
-            print("Warning: DAAT not implemented for this indexer, falling back to TAAT")
-            q_mode = 'T'
-    
-    if q_mode == 'T':
-        # TAAT mode (default)
-        if x == 1:
-            results = indexer.query(query)
-        else:
-            results = indexer.query(query, top_k=top_k, return_scores=True)
-    
+    if x == 1:
+        results = indexer.query_daat(query) if q_mode == 'D' else indexer.query(query)
+    else:
+        results = indexer.query(query, mode='DAAT' if q_mode == 'D' else 'TAAT', top_k=top_k)
+
     elapsed_ms = (time.time() - start_time) * 1000
     
     if not results:
@@ -82,9 +69,10 @@ def run_query(indexer, query, x, q_mode, top_k=10):
         for i, doc_id in enumerate(results[:top_k], 1):
             print(f"{i}. Document ID: {doc_id}")
     else:
-        # TF/TF-IDF: doc_id, score pairs
-        for i, (doc_id, score) in enumerate(results[:top_k], 1):
-            print(f"{i}. Document ID: {doc_id}, Score: {score:.4f}")
+        # TF/TF-IDF: ranked doc IDs
+        for i, doc_id in enumerate(results[:top_k], 1):
+            title = indexer.documents.get(doc_id, {}).get('title', '')
+            print(f"{i}. {doc_id}  {title}")
     
     print("-" * 80)
 
@@ -132,7 +120,7 @@ Examples:
   # Interactive mode
   python query.py -x 3 -y 1 -z 1 -q T -optim 0 --interactive
   
-Format: SelfIndex_i{x}d{y}c{z}q{q}o{optim}
+Index file: SelfIndex_i{x}d{y}c{z}o{optim}  (q selects TAAT/DAAT at query time)
   i{x}: 1=Boolean, 2=TF, 3=TF-IDF
   d{y}: 1=JSON, 2=DB1, 3=DB2
   c{z}: 1=None, 2=Code, 3=Library
