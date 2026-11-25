@@ -7,6 +7,7 @@ that time *only* the engine's own query call.
 """
 from __future__ import annotations
 
+import gc
 import glob
 import gzip
 import json
@@ -15,6 +16,8 @@ import re
 import statistics
 import sys
 import time
+from array import array
+from collections import defaultdict
 from functools import lru_cache
 from typing import Dict, List
 
@@ -51,16 +54,20 @@ def prepare_tokens() -> None:
     print(f"Tokenized {n} documents in {time.perf_counter() - t0:.1f}s -> {TOKENS}")
 
 
-def _load_docs() -> List[Dict]:
-    with gzip.open(CORPUS, "rt", encoding="utf-8") as f:
-        docs = [json.loads(line) for line in f]
+def _iter_docs(meta: Dict[str, Dict]):
+    """Stream documents with their cached tokens, one at a time (keeps peak memory low)."""
     if not os.path.exists(TOKENS):
         prepare_tokens()
-    with gzip.open(TOKENS, "rt", encoding="utf-8") as f:
-        tokens = dict(json.loads(line) for line in f)
-    for d in docs:
-        d["tokens"] = tokens[d["doc_id"]]
-    return docs
+    with gzip.open(CORPUS, "rt", encoding="utf-8") as cf, \
+            gzip.open(TOKENS, "rt", encoding="utf-8") as tf:
+        for c_line, t_line in zip(cf, tf):
+            doc = json.loads(c_line)
+            doc_id, tokens = json.loads(t_line)
+            assert doc_id == doc["doc_id"], "tokens cache out of sync — delete it and rebuild"
+            meta[doc_id] = {"title": doc["title"], "url": doc["url"], "content": doc["content"]}
+            # intern so each distinct term is stored once, not once per occurrence
+            doc["tokens"] = [sys.intern(t) for t in tokens]
+            yield doc
 
 
 # ---------------------------------------------------------------------------
@@ -187,33 +194,40 @@ def make_snippet(text: str, stems: List[str], width: int = 260) -> List[Dict]:
 class DemoEngine:
     def __init__(self) -> None:
         t0 = time.perf_counter()
-        docs = _load_docs()
-        self.meta = {d["doc_id"]: {"title": d["title"], "url": d["url"], "content": d["content"]}
-                     for d in docs}
-        self.num_tokens = sum(len(d["tokens"]) for d in docs)
-
+        self.meta: Dict[str, Dict] = {}
         self.build_seconds: Dict[str, float] = {}
 
-        self.boolean = SelfIndexer()
-        self.boolean._save_index = lambda *_: None  # in-memory only for the demo
-        t = time.perf_counter()
-        self.boolean.create_index("demo", docs)
-        self.build_seconds["boolean"] = time.perf_counter() - t
-
+        # TF-IDF (x=3) is built by the real indexer from a streamed corpus.
         self.tfidf = SelfIndexer_x3()
-        self.tfidf._save_index = lambda *_: None
+        self.tfidf._save_index = lambda *_: None  # in-memory only for the demo
         t = time.perf_counter()
-        self.tfidf.create_index("demo", docs)
+        self.tfidf.create_index("demo", _iter_docs(self.meta))
         self.build_seconds["tfidf"] = time.perf_counter() - t
 
-        # x=2 and x=3 use the identical postings layout [doc_id, tf, positions];
-        # share them so the demo fits comfortably in a 512 MB container.
+        # Pack position lists into compact C int arrays (~8x smaller than lists of ints).
+        # Query code only iterates / tests membership, which arrays support.
+        index = self.tfidf.inverted_index
+        for postings in index.values():
+            for p in postings:
+                p[2] = array("I", p[2])
+        self.num_tokens = sum(p[1] for postings in index.values() for p in postings)
+
+        # Fit the demo in a 512 MB container by sharing postings between models:
+        #  * TF (x=2) uses the identical layout [doc_id, tf, positions] -> share outright.
+        #  * Boolean (x=1) uses [doc_id, positions] -> new thin lists, same position arrays.
         self.tf = SelfIndexer_x2()
-        self.tf.inverted_index = self.tfidf.inverted_index
+        self.tf.inverted_index = index
         self.tf.documents = self.tfidf.documents
         self.build_seconds["tf"] = 0.0
 
-        del docs
+        t = time.perf_counter()
+        self.boolean = SelfIndexer()
+        self.boolean.inverted_index = defaultdict(
+            list, {term: [[p[0], p[2]] for p in postings] for term, postings in index.items()})
+        self.boolean.documents = self.tfidf.documents
+        self.build_seconds["boolean"] = time.perf_counter() - t
+        gc.collect()
+
         self.vocab_size = len(self.tfidf.inverted_index)
         self.num_postings = sum(len(p) for p in self.tfidf.inverted_index.values())
         self.startup_seconds = time.perf_counter() - t0
@@ -301,7 +315,7 @@ class DemoEngine:
             "postings": self.num_postings,
             "build_seconds": {k: round(v, 2) for k, v in self.build_seconds.items()},
             "startup_seconds": round(self.startup_seconds, 2),
-            "corpus": "English Wikipedia (20231101.en), first ~4K articles, truncated to 6K chars",
+            "corpus": "English Wikipedia (20231101.en), first ~4K articles, truncated to 3.5K chars",
         }
 
 

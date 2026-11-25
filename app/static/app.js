@@ -15,8 +15,8 @@
   fetch("/api/stats").then(r => r.json()).then(s => {
     $$("#stats dd").forEach(dd => (dd.textContent = fmt.format(s[dd.dataset.k])));
     $("#buildInfo").textContent =
-      `Index build at startup: Boolean ${s.build_seconds.boolean}s, TF-IDF ${s.build_seconds.tfidf}s ` +
-      `(TF shares the TF-IDF postings). ${fmt.format(s.tokens)} tokens after preprocessing.`;
+      `Index build at startup: TF-IDF ${s.build_seconds.tfidf}s; the TF and Boolean indexes share its postings ` +
+      `to fit a 512 MB container (Boolean derived in ${s.build_seconds.boolean}s). ${fmt.format(s.tokens)} tokens after preprocessing.`;
   });
 
   // ---------- segmented controls ----------

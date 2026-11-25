@@ -8,7 +8,7 @@ datasets-server API, truncates each article, and writes gzip-compressed JSONL to
 demo_data/corpus.jsonl.gz.
 
 Usage:
-    python scripts/build_demo_corpus.py --docs 4000 --chars 6000
+    python scripts/build_demo_corpus.py --docs 4000 --chars 3500
 """
 import argparse
 import gzip
@@ -35,7 +35,7 @@ def fetch(offset: int, retries: int = 5):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--docs", type=int, default=4000)
-    ap.add_argument("--chars", type=int, default=6000, help="truncate article text")
+    ap.add_argument("--chars", type=int, default=3500, help="truncate article text")
     ap.add_argument("--out", default="demo_data/corpus.jsonl.gz")
     args = ap.parse_args()
 
