@@ -33,8 +33,11 @@ processing, and postings compression. It was benchmarked against **Elasticsearch
 * Search ~4,000 English Wikipedia articles with **Boolean**, **TF** or **TF-IDF** retrieval, using **TAAT** or **DAAT** processing.
 * See the exact query the parser executed, the stemmed terms, the scores, highlighted snippets and engine latency.
 * **Compare all 6 configurations** on any query (median of 7 runs each).
+* **Watch TAAT vs DAAT run step by step**: an animated simulation on real postings lists from the index. TAAT fills score accumulators term by term, while DAAT moves pointers and keeps a top-k heap. Live counters show postings read, memory held and comparisons made, which explains why TAAT won the Python benchmark.
 * Browse the full-scale benchmark table and plots.
 * REST API with interactive docs at [`/docs`](https://selfindex-search.onrender.com/docs).
+
+<p align="center"><img src="docs/simulation.png" width="85%" alt="TAAT vs DAAT simulation"></p>
 
 ```bash
 curl "https://selfindex-search.onrender.com/api/search?q=quantum+physics&model=tfidf&mode=taat&k=5"

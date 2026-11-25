@@ -307,6 +307,45 @@ class DemoEngine:
                 })
         return rows
 
+    def trace(self, query: str, max_terms: int = 3, shared_docs: int = 4,
+              unique_per_term: int = 2) -> Dict:
+        """
+        Real postings for the query terms, reduced to a small document sample so the
+        TAAT / DAAT walk-through can be animated. Lists are sorted by doc number, as DAAT needs.
+        """
+        if not hasattr(self, "_doc_num"):
+            self._doc_num = {d: i for i, d in enumerate(self.meta)}
+        index = self.tfidf.inverted_index
+        terms = [t for t in query_stems(query[:MAX_QUERY_LEN]) if t in index][:max_terms]
+
+        overlap: Dict[str, int] = {}
+        for t in terms:
+            for p in index[t]:
+                overlap[p[0]] = overlap.get(p[0], 0) + 1
+        # Mix docs shared by several terms (where DAAT merges) with docs unique to
+        # one list (where DAAT's pointers skip ahead), so both behaviours are visible.
+        by_num = lambda d: self._doc_num[d]
+        shared = sorted((d for d in overlap if overlap[d] > 1), key=lambda d: (-overlap[d], by_num(d)))
+        chosen = set(shared[:shared_docs])
+        for t in terms:
+            unique = sorted((p[0] for p in index[t] if overlap[p[0]] == 1 and p[0] not in chosen), key=by_num)
+            others = sorted((p[0] for p in index[t] if p[0] not in chosen), key=by_num)
+            chosen.update((unique or others)[:unique_per_term])
+
+        lists = []
+        for t in terms:
+            postings = sorted((p for p in index[t] if p[0] in chosen),
+                              key=lambda p: self._doc_num[p[0]])
+            lists.append({
+                "term": t,
+                "df": len(index[t]),
+                "idf": round(self.tfidf.idf_scores.get(t, 0.0), 4),
+                "postings": [{"doc": self._doc_num[p[0]], "tf": p[1]} for p in postings],
+            })
+        docs = {self._doc_num[d]: self.meta[d]["title"] for d in chosen}
+        return {"query": query, "terms": terms, "lists": lists, "docs": docs,
+                "sampled_from": len(overlap)}
+
     def stats(self) -> Dict:
         return {
             "documents": len(self.meta),

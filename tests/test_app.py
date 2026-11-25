@@ -82,3 +82,14 @@ def test_pages_served(client):
     assert client.get("/").status_code == 200
     assert client.get("/healthz").json() == {"ok": True}
     assert client.get("/plots/plot_ES_comparison.png").status_code == 200
+
+
+def test_api_trace_for_simulation(client):
+    d = client.get("/api/trace", params={"q": "quantum physics theory"}).json()
+    assert d["terms"] and len(d["lists"]) == len(d["terms"])
+    for lst in d["lists"]:
+        nums = [p["doc"] for p in lst["postings"]]
+        assert nums and nums == sorted(nums), "DAAT needs doc-ordered postings"
+        assert all(p["tf"] >= 1 for p in lst["postings"])
+        assert all(str(n) in d["docs"] for n in nums)
+    assert client.get("/api/trace", params={"q": "zzzqqq"}).json()["lists"] == []

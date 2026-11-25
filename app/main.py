@@ -57,6 +57,12 @@ def compare(q: str = Query(..., min_length=1, max_length=300)):
     return {"query": q, "rows": engine.compare(q)}
 
 
+@app.get("/api/trace")
+def trace(q: str = Query(..., min_length=1, max_length=300)):
+    """Real postings for the TAAT vs DAAT animation."""
+    return engine.trace(q)
+
+
 @app.get("/api/stats")
 def stats():
     return engine.stats()

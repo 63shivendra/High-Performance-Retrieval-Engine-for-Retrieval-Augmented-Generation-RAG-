@@ -162,3 +162,60 @@ figcaption { font-size: 13px; color: #5f6470; padding: 8px 12px; border-top: 1px
   .bars { grid-template-columns: 110px 1fr 70px; }
   .r-snip { margin-left: 0; }
 }
+
+/* ---------- TAAT vs DAAT simulation ---------- */
+#sim { margin-bottom: 64px; }
+.sim-card { padding: 20px; }
+.sim-top { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.sim-top input { flex: 1 1 220px; font: inherit; padding: 8px 12px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--text); outline: 0; }
+.sim-top input:focus { border-color: var(--accent); }
+.sim-top > button, .primary { border: 0; background: var(--accent); color: #fff; padding: 8px 16px; border-radius: 8px; font-weight: 600; }
+.examples-inline { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.sim-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; }
+.sim-controls .ghost { min-width: 40px; }
+.sim-controls .primary { min-width: 104px; }
+.speed { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); margin-left: 8px; }
+.speed input { width: 110px; accent-color: var(--accent); }
+.small { font-size: 13px; }
+.sim-note { margin: 10px 0 14px; }
+.sim-stage { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.panel { border: 1px solid var(--line); border-radius: 10px; padding: 14px; background: var(--bg); display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.phead { display: flex; justify-content: space-between; align-items: baseline; }
+.phead h3 { margin: 0; font-size: 16px; }
+.pstatus { font-size: 12px; color: var(--accent); font-weight: 600; }
+.pcount { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.pcount > div { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; display: flex; flex-direction: column; }
+.pcount span { font-size: 11px; color: var(--muted); line-height: 1.25; }
+.pcount b { font-size: 20px; font-variant-numeric: tabular-nums; }
+.plists { display: flex; flex-direction: column; gap: 8px; }
+.prow { display: grid; grid-template-columns: 92px 1fr; gap: 8px; align-items: start; }
+.pterm { display: flex; flex-direction: column; font-family: var(--mono); }
+.pterm b { font-size: 13px; }
+.pterm small { font-size: 10.5px; color: var(--muted); }
+.pcells { display: flex; flex-wrap: wrap; gap: 4px; }
+.cell { display: inline-flex; flex-direction: column; align-items: center; min-width: 44px; padding: 3px 5px; border-radius: 6px; border: 1.5px solid var(--line); background: var(--surface); font-family: var(--mono); line-height: 1.2; transition: background .2s, border-color .2s, opacity .2s; position: relative; }
+.cell b { font-size: 12px; }
+.cell small { font-size: 10px; color: var(--muted); }
+.cell.done { opacity: .38; }
+.cell.ptr { border-color: var(--accent); }
+.cell.ptr::before { content: "▼"; position: absolute; top: -11px; font-size: 9px; color: var(--accent); }
+.cell.cur { background: var(--hit); border-color: #e0b400; }
+.pstate { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px; min-height: 92px; }
+.plabel { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 6px; }
+.accs { display: flex; flex-direction: column; gap: 3px; max-height: 210px; overflow-y: auto; }
+.acc { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; font-size: 13px; padding: 2px 6px; border-radius: 5px; transition: background .2s; }
+.acc .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
+.acc b { font-family: var(--mono); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.acc.hot { background: var(--hit); }
+.acc.win { box-shadow: inset 3px 0 0 var(--good); }
+.acc.win .t { color: var(--text); }
+.dchip { font-family: var(--mono); font-size: 11.5px; font-weight: 700; color: var(--accent); }
+.narr { margin: 0; font-size: 13.5px; min-height: 3.2em; }
+.verdict { margin-top: 14px; padding: 12px 14px; border-radius: 10px; background: var(--accent-soft); font-size: 14.5px; }
+.legend { display: flex; gap: 16px; margin-top: 12px; flex-wrap: wrap; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i.cell { min-width: 16px; height: 14px; padding: 0; }
+.legend i.cell.ptr::before { display: none; }
+@media (max-width: 860px) {
+  .sim-stage { grid-template-columns: 1fr; }
+}

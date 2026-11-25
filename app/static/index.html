@@ -14,6 +14,7 @@
       <a class="brand" href="/">SelfIndex</a>
       <nav>
         <a href="#search">Demo</a>
+        <a href="#sim">Simulation</a>
         <a href="#benchmarks">Benchmarks</a>
         <a href="#how">How it works</a>
         <a href="/docs">API</a>
@@ -84,6 +85,40 @@
       </div>
     </section>
 
+    <section id="sim" class="wrap">
+      <h2>Watch it run: TAAT vs DAAT</h2>
+      <p class="sub">Two ways to score the same query. Both use the real postings lists from the live index, run side by side.
+        Press play and watch where the work goes.</p>
+
+      <div class="card sim-card">
+        <form id="simForm" class="sim-top" autocomplete="off">
+          <input id="simQ" value="quantum physics theory" maxlength="300" aria-label="Simulation query">
+          <button type="submit">Load postings</button>
+          <span class="examples-inline">
+            <button type="button" class="chip" data-simq="roman empire war">roman empire war</button>
+            <button type="button" class="chip" data-simq="solar energy planet">solar energy planet</button>
+            <button type="button" class="chip" data-simq="music album band">music album band</button>
+          </span>
+        </form>
+        <div class="sim-controls">
+          <button type="button" id="simReset" class="ghost" title="Reset">⏮</button>
+          <button type="button" id="simBack" class="ghost" title="Step back">◀</button>
+          <button type="button" id="simPlay" class="primary">▶ Play</button>
+          <button type="button" id="simNext" class="ghost" title="Step forward">▶|</button>
+          <label class="speed">slow <input id="simSpeed" type="range" min="150" max="1500" step="50" value="700" dir="rtl"> fast</label>
+          <span id="simStep" class="muted small"></span>
+        </div>
+        <p id="simNote" class="muted small sim-note"></p>
+        <div id="simStage" class="sim-stage"></div>
+        <div id="simVerdict" class="verdict" hidden></div>
+        <div class="legend small muted">
+          <span><i class="cell cur"></i> being processed</span>
+          <span><i class="cell ptr"></i> DAAT pointer</span>
+          <span><i class="cell done"></i> already read</span>
+        </div>
+      </div>
+    </section>
+
     <section id="benchmarks" class="wrap">
       <h2>Benchmarks at full scale</h2>
       <p class="sub">100,000 documents (50K Wikipedia + 50K Webz.io news, ~15M tokens), 256 queries, top-10.
@@ -151,6 +186,7 @@
     <a href="https://github.com/63shivendra/High-Performance-Retrieval-Engine-for-Retrieval-Augmented-Generation-RAG-/blob/main/report_detailed.pdf" target="_blank" rel="noopener">Full report (PDF)</a>
   </footer>
 
+  <script src="/static/sim.js"></script>
   <script src="/static/app.js"></script>
 </body>
 </html>
