@@ -9,11 +9,11 @@ The retrieval layer of a RAG system ("R"), implemented without a search library.
 positional postings, a Boolean query parser, TF and TF-IDF ranking, term-at-a-time and document-at-a-time query
 processing, and postings compression. It was benchmarked against **Elasticsearch** on 100,000 documents.
 
-### 🔎 [**Try the live demo →**](https://selfindex-search.onrender.com)
+### 🔎 [**Try the live demo →**](https://high-performance-retrieval-engine-for.onrender.com)
 
 > Hosted on a free tier, so the first request after a period of inactivity can take ~30–60 s while the container wakes up.
 
-[![SelfIndex live demo](docs/screenshot.png)](https://selfindex-search.onrender.com)
+[![SelfIndex live demo](docs/screenshot.png)](https://high-performance-retrieval-engine-for.onrender.com)
 
 ---
 
@@ -35,12 +35,12 @@ processing, and postings compression. It was benchmarked against **Elasticsearch
 * **Compare all 6 configurations** on any query (median of 7 runs each).
 * **Watch TAAT vs DAAT run step by step**: an animated simulation on real postings lists from the index. TAAT fills score accumulators term by term, while DAAT moves pointers and keeps a top-k heap. Live counters show postings read, memory held and comparisons made, which explains why TAAT won the Python benchmark.
 * Browse the full-scale benchmark table and plots.
-* REST API with interactive docs at [`/docs`](https://selfindex-search.onrender.com/docs).
+* REST API with interactive docs at [`/docs`](https://high-performance-retrieval-engine-for.onrender.com/docs).
 
 <p align="center"><img src="docs/simulation.png" width="85%" alt="TAAT vs DAAT simulation"></p>
 
 ```bash
-curl "https://selfindex-search.onrender.com/api/search?q=quantum+physics&model=tfidf&mode=taat&k=5"
+curl "https://high-performance-retrieval-engine-for.onrender.com/api/search?q=quantum+physics&model=tfidf&mode=taat&k=5"
 ```
 
 ## Architecture
